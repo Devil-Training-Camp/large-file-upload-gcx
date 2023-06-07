@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileChunk } from "./util";
 import { request } from "./util/http";
-import { BASE_URL } from "./constants";
+import { BASE_URL, SIZE } from "./constants";
 import "./App.css";
 
 function App() {
@@ -16,17 +16,16 @@ function App() {
 
   const uploadChunks = async (fileChunkList) => {
     const requestList = fileChunkList
-      .map((chunk, hash) => {
+      .map(({ chunk, hash }) => {
         const formData = new FormData();
         formData.append("chunk", chunk);
         formData.append("hash", hash);
         formData.append("fileName", originFile.name);
-
         return { formData };
       })
       .map(({ formData }) => {
         return request({
-          url: BASE_URL,
+          url: `${BASE_URL}/upload`,
           data: formData,
         });
       });
@@ -39,12 +38,13 @@ function App() {
 
   const mergeRequest = async () => {
     await request({
-      url: `${BASE_URL}/merge`,
+      url: `${BASE_URL}/upload/merge`,
       headers: {
         "content-type": "application/json",
       },
       data: JSON.stringify({
         fileName: originFile.name,
+        size: SIZE,
       }),
     });
   };
