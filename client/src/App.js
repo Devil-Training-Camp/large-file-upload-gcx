@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef } from "react";
 import { createFileChunk } from "./util";
 import { request } from "./util/http";
 import { BASE_URL, SIZE } from "./constants";
@@ -8,6 +8,9 @@ function App() {
   const [originFile, setOriginFile] = useState(undefined);
   const [fileChunkList, setFileChunkList] = useState([]);
   const [totalProgress, setTotalProgress] = useState(0);
+
+  const workerRef = useRef(new Worker("worker.js"));
+  const worker = workerRef.current;
 
   const handleFileChange = async (e) => {
     const [file] = e.target.files;
@@ -68,10 +71,28 @@ function App() {
       }),
     });
   };
+
+  // 生成文件 hash（web-worker）
+  const calculateHash = (fileChunkList) => {
+    return new Promise((resolve) => {
+      // 添加 worker 属性
+      worker.postMessage({ fileChunkList });
+      worker.onmessage = (e) => {
+        const { hash } = e.data;
+        if (hash) {
+          resolve(hash);
+        }
+      };
+    });
+  };
+
   const handleUpload = async () => {
     if (!originFile) return alert("请上传文件");
     const fileChunk = createFileChunk(originFile);
+    const allChunkFilesHash = await calculateHash(fileChunk); // 计算所有切片的hash
+
     const fileChunkList = fileChunk.map(({ file }, index) => ({
+      fileHash: allChunkFilesHash[index],
       chunk: file,
       index,
       // 文件名 + 数组下标
