@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { createFileChunk } from "./util";
 import { request } from "./util/http";
 import { BASE_URL, SIZE } from "./constants";
@@ -7,6 +7,7 @@ import "./App.css";
 function App() {
   const [originFile, setOriginFile] = useState(undefined);
   const [fileChunkList, setFileChunkList] = useState([]);
+  const [totalProgress, setTotalProgress] = useState(0);
 
   const handleFileChange = async (e) => {
     const [file] = e.target.files;
@@ -14,19 +15,38 @@ function App() {
     setOriginFile(file);
   };
 
+  const createProgressHandler = useCallback(
+    (index) => (e) => {
+      setFileChunkList((prevList) => {
+        const newList = [...prevList];
+        // 设置切片的进度条
+        newList[index]["percentage"] = parseInt(String((e.loaded / e.total) * 100));
+
+        // 设置总上传进度
+        const totalPercentage = newList.reduce((total, chunk) => total + chunk.percentage, 0) / newList.length;
+        setTotalProgress(totalPercentage);
+        return newList;
+      });
+
+      console.log(totalProgress, fileChunkList);
+    },
+    [fileChunkList]
+  );
+
   const uploadChunks = async (fileChunkList) => {
     const requestList = fileChunkList
-      .map(({ chunk, hash }) => {
+      .map(({ chunk, hash, index }) => {
         const formData = new FormData();
         formData.append("chunk", chunk);
         formData.append("hash", hash);
         formData.append("fileName", originFile.name);
-        return { formData };
+        return { formData, index };
       })
-      .map(({ formData }) => {
+      .map(({ formData, index }) => {
         return request({
           url: `${BASE_URL}/upload`,
           data: formData,
+          onProgress: createProgressHandler(index),
         });
       });
 
@@ -53,8 +73,10 @@ function App() {
     const fileChunk = createFileChunk(originFile);
     const fileChunkList = fileChunk.map(({ file }, index) => ({
       chunk: file,
+      index,
       // 文件名 + 数组下标
       hash: originFile.name + "-" + index,
+      percentage: 0,
     }));
     setFileChunkList(fileChunkList);
 
