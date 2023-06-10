@@ -65,9 +65,8 @@ server.on("request", async (req, res) => {
     const multipart = new multiparty.Form();
     multipart.parse(req, async (err, fields, files) => {
       if (err) return;
-
       const [chunk] = files.chunk;
-      const [hash] = fields.hash;
+      const [chunkHash] = fields.chunkHash;
       const [fileName] = fields.fileName;
 
       /**
@@ -81,7 +80,7 @@ server.on("request", async (req, res) => {
       }
       // fs-extra 的 rename 方法 window 平台会有权限问题
       // @see https://github.com/meteor/meteor/issues/7852#issuecomment-255767835
-      await fse.move(chunk.path, `${chunkDir}/${hash}`);
+      await fse.move(chunk.path, `${chunkDir}/${chunkHash}`);
       res.end("received file chunk");
     });
   }

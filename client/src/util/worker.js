@@ -2,7 +2,7 @@
 
 self.importScripts("https://cdn.jsdelivr.net/npm/spark-md5@3.0.2/spark-md5.min.js");
 self.onmessage = async (e) => {
-  const { fileChunkList } = e.data;
+  const { fileChunks } = e.data;
   const spark = new self.SparkMD5.ArrayBuffer();
   let percentage = 0;
   const loadNext = (fileChunk) => {
@@ -11,7 +11,7 @@ self.onmessage = async (e) => {
       reader.readAsArrayBuffer(fileChunk);
       reader.onload = (e) => {
         spark.append(e.target.result);
-        percentage += 100 / fileChunkList.length;
+        percentage += 100 / fileChunks.length;
         resolve({
           percentage,
           chunkHash: self.SparkMD5.ArrayBuffer.hash(e.target.result),
@@ -19,8 +19,9 @@ self.onmessage = async (e) => {
       };
     });
   };
-  for (let fileChunk of fileChunkList) {
+  for (let fileChunk of fileChunks) {
     const result = await loadNext(fileChunk["file"]);
+    // console.log(result);
     self.postMessage(result);
   }
 
