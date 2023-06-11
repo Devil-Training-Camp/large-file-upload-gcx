@@ -1,5 +1,21 @@
+import JSZip from "jszip";
 import { SIZE } from "../constants";
 import { uploadRequest, mergeRequest, verifyUpload } from "../api/request";
+
+// 压缩选择的文件
+const generateZip = async (file) => {
+  var zip = new JSZip();
+  zip.file(file.name, file, { date: new Date(file.lastModifiedDate) });
+  const content = await zip.generateAsync({
+    type: "blob",
+    compression: "DEFLATE",
+    compressionOptions: {
+      level: 9, // level: 9，意味着JSZip将使用最高压缩级别
+    },
+  });
+  // saveAs(content, 'temp.zip'); // FileSaver库 此处可测试解压文件
+  return content;
+};
 
 // 生成切片的大小
 function createFileChunk(file, size = SIZE) {
@@ -19,7 +35,6 @@ const calculateHash = (fileChunks, setProgressValue) => {
     let result = { fileHash: "", chunkHashs: [] };
     let worker = new Worker(new URL("./worker.js", import.meta.url));
     // 添加 worker 属性
-    console.log(fileChunks);
     worker.postMessage({ fileChunks });
     worker.onmessage = (e) => {
       const { percentage, fileHash, chunkHash } = e.data;
@@ -34,30 +49,33 @@ const calculateHash = (fileChunks, setProgressValue) => {
   });
 };
 
-const uploadChunks = async ({ fileName, fileHash, chunkHashs, hashToChunkMap, onUploadProgress }) => {
+const uploadChunks = async ({ fileName, fileHash, chunkHashs, hashToChunkMap, onUploadProgress, controllerRef }) => {
   // 判断是否妙传 -- 这里判断的是上传文件名和 hash 值，而非单个分片文件
   const isInstantTransmission = await verifyUpload(fileName, fileHash);
-  if (!isInstantTransmission) {
+  console.log(isInstantTransmission);
+  if (isInstantTransmission) {
     alert("skip upload: file upload success");
     return;
   }
   const requestList = chunkHashs
     .map((chunkHash) => {
-      const { chunk } = hashToChunkMap.get(chunkHash);
+      const { chunk, index } = hashToChunkMap.get(chunkHash);
       const formData = new FormData();
       formData.append("chunk", chunk["file"]);
       formData.append("fileHash", fileHash);
-      formData.append("chunkHash", chunkHash);
+      formData.append("chunkHash", `${chunkHash}-${index}`);
       formData.append("fileName", fileName);
       return { formData, chunkHash };
     })
     .map(({ formData, chunkHash }, index) => {
       return new Promise(async (resolve, reject) => {
         try {
-          await uploadRequest(formData, onUploadProgress);
+          await uploadRequest(formData, onUploadProgress, controllerRef.current.signal);
         } catch (error) {
           console.log("uploadRequst function fail:", error);
+          controllerRef.current = new AbortController();
           reject();
+          return;
         }
 
         resolve();
@@ -70,4 +88,4 @@ const uploadChunks = async ({ fileName, fileHash, chunkHashs, hashToChunkMap, on
   await mergeRequest(fileName);
 };
 
-export { createFileChunk, calculateHash, uploadChunks };
+export { createFileChunk, calculateHash, uploadChunks, generateZip };

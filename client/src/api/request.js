@@ -2,13 +2,14 @@ import { request } from "./config";
 import { SIZE } from "../constants";
 
 // 上传文件
-export function uploadRequest(formData, onUploadProgress) {
+export function uploadRequest(formData, onUploadProgress, signal) {
   return request({
     url: "upload",
     data: formData,
     onProgress: (e) => {
       onUploadProgress?.(parseInt(String((e.loaded / e.total) * 100)));
     },
+    signal,
   });
 }
 

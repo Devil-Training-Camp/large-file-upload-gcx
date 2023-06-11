@@ -21,7 +21,6 @@ self.onmessage = async (e) => {
   };
   for (let fileChunk of fileChunks) {
     const result = await loadNext(fileChunk["file"]);
-    // console.log(result);
     self.postMessage(result);
   }
 

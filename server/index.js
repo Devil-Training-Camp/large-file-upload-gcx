@@ -86,26 +86,27 @@ server.on("request", async (req, res) => {
       // fs-extra 的 rename 方法 window 平台会有权限问题
       // @see https://github.com/meteor/meteor/issues/7852#issuecomment-255767835
       await fse.move(chunk.path, `${chunkDir}/${chunkHash}`);
-      res.end("received file chunk");
+      res.end(JSON.stringify({ code: 0, message: "received file chunk" }));
     });
   }
 
+  //通过文件名来验证，不是很严谨，可以通过文件的 hash 值来验证
   if (req.url === "/upload/verify") {
-    const data = await resolvePost(req);
-    console.log("11111", data);
-    const { fileHash, fileName } = data;
+    const { fileHash, fileName } = await resolvePost(req);
     const ext = extractExt(fileName);
-    const filePath = path.resolve(UPLOAD_DIR, `${fileHash}${ext}`);
+    // const filePath = path.resolve(UPLOAD_DIR, `${fileName}${ext}`);
+    const filePath = path.resolve(UPLOAD_DIR, fileName);
+    console.log(UPLOAD_DIR, `${fileName}`, fse.existsSync(filePath));
     if (fse.existsSync(filePath)) {
       res.end(
         JSON.stringify({
-          instantTransmission: false,
+          instantTransmission: true,
         })
       );
     } else {
       res.end(
         JSON.stringify({
-          instantTransmission: true,
+          instantTransmission: false,
         })
       );
     }

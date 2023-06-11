@@ -11,7 +11,7 @@ const request = ({ url, method = "post", data, headers = {}, onProgress = (e) =>
     xhr.send(data);
 
     xhr.onload = (e) => {
-      resolve({ data: e.target.response });
+      resolve({ data: e.target.response ? JSON.parse(e.target.response) : null });
     };
   });
 };

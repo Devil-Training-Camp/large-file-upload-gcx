@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import SelectFile from "./components/select-btn";
 import UploadBtn from "./components/upload-btn";
+import PauseBtn from "./components/pause-btn";
 import "./App.css";
 
 function App() {
@@ -20,15 +21,16 @@ function App() {
       setFileName(newData.fileName);
     }
 
-    console.log(newData);
-
     dataRef.current = { ...dataRef.current, ...newData };
   };
+
+  const pauseControllerRef = useRef(new AbortController());
+
   return (
     <div className="App">
       <SelectFile updateData={updateData} />
-      <div>上传的文件名：{fileName}</div>
-      <UploadBtn onUploadProgress={setFileProgress} dataRef={dataRef} />
+      <UploadBtn onUploadProgress={setFileProgress} dataRef={dataRef} controllerRef={pauseControllerRef} />
+      <PauseBtn controllerRef={pauseControllerRef} />
       <div>上传服务器的进度：{fileProgress}</div>
     </div>
   );
