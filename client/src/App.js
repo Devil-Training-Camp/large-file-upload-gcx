@@ -20,6 +20,8 @@ function App() {
       setFileName(newData.fileName);
     }
 
+    console.log(newData);
+
     dataRef.current = { ...dataRef.current, ...newData };
   };
   return (

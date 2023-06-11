@@ -1,5 +1,5 @@
 import { SIZE } from "../constants";
-import { uploadRequest, mergeRequest } from "../api/request";
+import { uploadRequest, mergeRequest, verifyUpload } from "../api/request";
 
 // 生成切片的大小
 function createFileChunk(file, size = SIZE) {
@@ -35,6 +35,12 @@ const calculateHash = (fileChunks, setProgressValue) => {
 };
 
 const uploadChunks = async ({ fileName, fileHash, chunkHashs, hashToChunkMap, onUploadProgress }) => {
+  // 判断是否妙传 -- 这里判断的是上传文件名和 hash 值，而非单个分片文件
+  const isInstantTransmission = await verifyUpload(fileName, fileHash);
+  if (!isInstantTransmission) {
+    alert("skip upload: file upload success");
+    return;
+  }
   const requestList = chunkHashs
     .map((chunkHash) => {
       const { chunk } = hashToChunkMap.get(chunkHash);

@@ -1,9 +1,10 @@
 import { request } from "./config";
-import { BASE_URL, SIZE } from "../constants";
+import { SIZE } from "../constants";
 
+// 上传文件
 export function uploadRequest(formData, onUploadProgress) {
   return request({
-    url: `${BASE_URL}/upload`,
+    url: "upload",
     data: formData,
     onProgress: (e) => {
       onUploadProgress?.(parseInt(String((e.loaded / e.total) * 100)));
@@ -11,9 +12,10 @@ export function uploadRequest(formData, onUploadProgress) {
   });
 }
 
+// 通知服务端合并分片文件
 export const mergeRequest = async (fileName) => {
   await request({
-    url: `${BASE_URL}/upload/merge`,
+    url: "upload/merge",
     headers: {
       "content-type": "application/json",
     },
@@ -23,3 +25,18 @@ export const mergeRequest = async (fileName) => {
     }),
   });
 };
+
+// 验证是否需要上传文件（文件秒传）
+export async function verifyUpload(fileName, fileHash) {
+  const res = await request({
+    url: "upload/verify",
+    headers: {
+      "content-type": "application/json",
+    },
+    data: JSON.stringify({
+      fileName,
+      fileHash,
+    }),
+  });
+  return res.data.instantTransmission;
+}

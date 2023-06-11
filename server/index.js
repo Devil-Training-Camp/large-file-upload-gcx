@@ -4,11 +4,15 @@ const fse = require("fs-extra");
 const multiparty = require("multiparty");
 
 const server = http.createServer();
+// 提取后缀名
+const extractExt = (filename) => filename.slice(filename.lastIndexOf("."), filename.length);
+
 // 大文件存储目录
 const UPLOAD_DIR = path.resolve(__dirname, "..", "target");
 
-const resolvePost = (req) =>
-  new Promise((resolve) => {
+//
+const resolvePost = (req) => {
+  return new Promise((resolve) => {
     let chunk = "";
     req.on("data", (data) => {
       chunk += data;
@@ -17,6 +21,7 @@ const resolvePost = (req) =>
       resolve(JSON.parse(chunk));
     });
   });
+};
 
 // 写入文件流
 const pipeStream = (path, writeStream) =>
@@ -83,6 +88,27 @@ server.on("request", async (req, res) => {
       await fse.move(chunk.path, `${chunkDir}/${chunkHash}`);
       res.end("received file chunk");
     });
+  }
+
+  if (req.url === "/upload/verify") {
+    const data = await resolvePost(req);
+    console.log("11111", data);
+    const { fileHash, fileName } = data;
+    const ext = extractExt(fileName);
+    const filePath = path.resolve(UPLOAD_DIR, `${fileHash}${ext}`);
+    if (fse.existsSync(filePath)) {
+      res.end(
+        JSON.stringify({
+          instantTransmission: false,
+        })
+      );
+    } else {
+      res.end(
+        JSON.stringify({
+          instantTransmission: true,
+        })
+      );
+    }
   }
 
   if (req.url === "/upload/merge") {
