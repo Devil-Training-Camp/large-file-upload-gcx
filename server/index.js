@@ -2,6 +2,7 @@ const http = require("http");
 const path = require("path");
 const fse = require("fs-extra");
 const multiparty = require("multiparty");
+const JSZip = require("jszip");
 
 const server = http.createServer();
 // 提取后缀名
@@ -10,7 +11,19 @@ const extractExt = (filename) => filename.slice(filename.lastIndexOf("."), filen
 // 大文件存储目录
 const UPLOAD_DIR = path.resolve(__dirname, "..", "target");
 
-//
+// 文件切片存储目录
+const CHUNK_DIR = path.resolve(__dirname, "..", "target_chunk");
+
+function isExistFile(filePath, fileName = "") {
+  try {
+    return fse.existsSync(path.resolve(filePath, fileName));
+  } catch (error) {
+    return false;
+  }
+}
+const getChunkDir = (fileHash) => path.resolve(CHUNK_DIR, `${fileHash}-chunks`);
+
+// 解析 data 数据
 const resolvePost = (req) => {
   return new Promise((resolve) => {
     let chunk = "";
@@ -34,28 +47,6 @@ const pipeStream = (path, writeStream) =>
     readStream.pipe(writeStream);
   });
 
-// 合并切片
-const mergeFileChunk = async (filePath, fileName, size) => {
-  const chunkDir = path.resolve(UPLOAD_DIR, "chunkDir" + fileName);
-  const chunkPaths = await fse.readdir(chunkDir);
-  // 根据切片下标进行排序
-  // 否则直接读取目录的获得的顺序会错乱
-  chunkPaths.sort((a, b) => a.split("-")[1] - b.split("-")[1]);
-  // 并发写入文件
-  await Promise.all(
-    chunkPaths.map((chunkPath, index) =>
-      pipeStream(
-        path.resolve(chunkDir, chunkPath),
-        // 根据 size 在指定位置创建可写流
-        fse.createWriteStream(filePath, { start: index * size })
-      )
-    )
-  );
-
-  // 合并后删除保存切片的目录
-  fse.rmdirSync(chunkDir);
-};
-
 server.on("request", async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "*");
@@ -72,17 +63,30 @@ server.on("request", async (req, res) => {
       if (err) return;
       const [chunk] = files.chunk;
       const [chunkHash] = fields.chunkHash;
-      const [fileName] = fields.fileName;
+      const [fileHash] = fields.fileHash;
 
       /**
        * 创建临时文件用于临时存储 chunk
-       * 添加 chunkDir 前缀与文件名做区分
+       * 添加 fileHash + chunks 存放所有的切片
        * */
-      const chunkDir = path.resolve(UPLOAD_DIR, "chunkDir" + fileName);
+      const chunkDir = getChunkDir(fileHash);
 
       if (!fse.existsSync(chunkDir)) {
         await fse.mkdirs(chunkDir);
       }
+
+      // 判断 切片是否存在
+      if (isExistFile(chunkDir, chunkHash)) {
+        res.end(
+          JSON.stringify({
+            code: 0,
+            message: "received file chunk",
+            // isExist: true,
+          })
+        );
+        return;
+      }
+
       // fs-extra 的 rename 方法 window 平台会有权限问题
       // @see https://github.com/meteor/meteor/issues/7852#issuecomment-255767835
       await fse.move(chunk.path, `${chunkDir}/${chunkHash}`);
@@ -90,13 +94,12 @@ server.on("request", async (req, res) => {
     });
   }
 
-  //通过文件名来验证，不是很严谨，可以通过文件的 hash 值来验证
+  //通过文件的 hash 值来验证文件是否已上传
   if (req.url === "/upload/verify") {
     const { fileHash, fileName } = await resolvePost(req);
     const ext = extractExt(fileName);
-    // const filePath = path.resolve(UPLOAD_DIR, `${fileName}${ext}`);
-    const filePath = path.resolve(UPLOAD_DIR, fileName);
-    console.log(UPLOAD_DIR, `${fileName}`, fse.existsSync(filePath));
+    const filePath = path.resolve(CHUNK_DIR, `${fileHash}${ext}`);
+    // const filePath = path.resolve(UPLOAD_DIR, fileName);
     if (fse.existsSync(filePath)) {
       res.end(
         JSON.stringify({
@@ -114,13 +117,64 @@ server.on("request", async (req, res) => {
 
   if (req.url === "/upload/merge") {
     const data = await resolvePost(req);
-    const { fileName, size } = data;
-    const filePath = path.resolve(UPLOAD_DIR, `${fileName}`);
-    await mergeFileChunk(filePath, fileName, size);
+    const { fileName, fileHash, chunk_size } = data;
+
+    const chunkFilePath = getChunkDir(fileHash);
+    const extension = extractExt(fileName);
+
+    // !!! 合并文件后的路径，这里合并的文件之所以要单独拿出来，是因为上传的文件都是压缩包，需要解压文件存放在指定位置
+    const generateMergeFilePath = path.resolve(CHUNK_DIR, `${fileHash}${extension}`); //获取切片路径
+    await mergeFileChunk({ generateMergeFilePath, chunkFilePath, fileHash, chunk_size });
+
+    // 将合并后的文件解压到指定位置
+    unZip(generateMergeFilePath, fileName);
 
     res.end(JSON.stringify({ code: 0, message: "file merged success" }));
   }
 });
+
+// 合并切片放在 chunks 目录下
+const mergeFileChunk = async ({ generateMergeFilePath, chunkFilePath, chunk_size }) => {
+  const chunkPaths = await fse.readdir(chunkFilePath);
+  // 根据切片下标进行排序
+  // 否则直接读取目录的获得的顺序会错乱
+  chunkPaths.sort((a, b) => a.split("-")[1] - b.split("-")[1]);
+  // 并发写入文件
+  const arr = await Promise.all(
+    chunkPaths.map((chunkPath, index) =>
+      pipeStream(
+        path.resolve(chunkFilePath, chunkPath),
+        // 根据 size 在指定位置创建可写流
+        fse.createWriteStream(generateMergeFilePath, { start: index * chunk_size, end: (index + 1) * chunk_size })
+      )
+    )
+  );
+
+  await Promise.all(arr);
+  // 合并后删除保存切片的目录
+  // fse.rmdirSync(chunkFilePath);
+};
+
+async function unZip(generateMergeFilePath, fileName) {
+  try {
+    const jszip = new JSZip();
+    const buffer = await fse.readFile(generateMergeFilePath);
+    await jszip.loadAsync(buffer, { base64: true });
+    const content = await jszip.files[fileName].async("nodebuffer");
+
+    const dest = path.resolve(UPLOAD_DIR, fileName);
+    if (!fse.existsSync(UPLOAD_DIR)) {
+      //文件夹不存在，新建该文件夹
+      await fse.mkdirs(UPLOAD_DIR);
+    }
+
+    const arrayBuffer = await (content.arrayBuffer?.() || content);
+    const buf = Buffer.from(arrayBuffer);
+    await fse.writeFile(dest, buf);
+  } catch (err) {
+    console.warn(err);
+  }
+}
 
 const PORT = process.env.PORT || 8080;
 

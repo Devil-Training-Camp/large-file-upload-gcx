@@ -1,5 +1,4 @@
 import { request } from "./config";
-import { SIZE } from "../constants";
 
 // 上传文件
 export function uploadRequest(formData, onUploadProgress, signal) {
@@ -14,7 +13,7 @@ export function uploadRequest(formData, onUploadProgress, signal) {
 }
 
 // 通知服务端合并分片文件
-export const mergeRequest = async (fileName) => {
+export const mergeRequest = async (fileName, fileHash, CHUNK_SIZE) => {
   await request({
     url: "upload/merge",
     headers: {
@@ -22,7 +21,8 @@ export const mergeRequest = async (fileName) => {
     },
     data: JSON.stringify({
       fileName,
-      size: SIZE,
+      fileHash,
+      chunk_size: CHUNK_SIZE,
     }),
   });
 };

@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import { SIZE } from "../constants";
+import { CHUNK_SIZE } from "../constants";
 import { uploadRequest, mergeRequest, verifyUpload } from "../api/request";
 
 // 压缩选择的文件
@@ -18,7 +18,7 @@ const generateZip = async (file) => {
 };
 
 // 生成切片的大小
-function createFileChunk(file, size = SIZE) {
+function createFileChunk(file, size = CHUNK_SIZE) {
   const fileChunkList = [];
   let cur = 0;
   while (cur < file.size) {
@@ -52,7 +52,6 @@ const calculateHash = (fileChunks, setProgressValue) => {
 const uploadChunks = async ({ fileName, fileHash, chunkHashs, hashToChunkMap, onUploadProgress, controllerRef }) => {
   // 判断是否妙传 -- 这里判断的是上传文件名和 hash 值，而非单个分片文件
   const isInstantTransmission = await verifyUpload(fileName, fileHash);
-  console.log(isInstantTransmission);
   if (isInstantTransmission) {
     alert("skip upload: file upload success");
     return;
@@ -64,10 +63,10 @@ const uploadChunks = async ({ fileName, fileHash, chunkHashs, hashToChunkMap, on
       formData.append("chunk", chunk["file"]);
       formData.append("fileHash", fileHash);
       formData.append("chunkHash", `${chunkHash}-${index}`);
-      formData.append("fileName", fileName);
+      // formData.append("fileName", fileName);
       return { formData, chunkHash };
     })
-    .map(({ formData, chunkHash }, index) => {
+    .map(({ formData }) => {
       return new Promise(async (resolve, reject) => {
         try {
           await uploadRequest(formData, onUploadProgress, controllerRef.current.signal);
@@ -85,7 +84,7 @@ const uploadChunks = async ({ fileName, fileHash, chunkHashs, hashToChunkMap, on
   await Promise.all(requestList);
 
   // 前端发送额外的合并请求，服务端接受到请求时合并切片
-  await mergeRequest(fileName);
+  await mergeRequest(fileName, fileHash, CHUNK_SIZE);
 };
 
 export { createFileChunk, calculateHash, uploadChunks, generateZip };
