@@ -131,6 +131,44 @@ server.on("request", async (req, res) => {
 
     res.end(JSON.stringify({ code: 0, message: "file merged success" }));
   }
+
+  if (req.url === "/upload/can_continue") {
+    const { fileName, fileHash, chunkHashs } = await resolvePost(req);
+
+    /**
+     * 继续上传考虑三种情况：
+     * 1. 目标文件已上传完毕
+     * 2. 已上传部分切片文件
+     * 3. 一个切片都没有上传
+     */
+
+    // 判断在 target_chunk 目录中是否已存在目标文件
+    if (isExistFile(CHUNK_DIR, `${fileHash}${getExtension(fileName)}`)) {
+      res.end(JSON.stringify({ isContinue: false }));
+      return;
+    }
+    // 判断 target_chunk 目录中是否存在切片文件夹
+    const chunkDir = getChunkDir(fileHash);
+    if (!isExistFile(chunkDir)) {
+      res.end(JSON.stringify({ isContinue: "noChunk" }));
+      return;
+    }
+    // 已上传部分切片
+    const chunkPaths = await fse.readdir(chunkDir);
+    const existHashs = chunkPaths.map((chunkPath) => chunkPath.split("-")[0]);
+    if (chunkPaths.length > 0) {
+      // 服务端存在部分chunk文件，可续传
+      res.end(
+        JSON.stringify({
+          isContinue: "partChunk",
+          uploadedHashs: existHashs,
+        })
+      );
+      return;
+    }
+    res.end(JSON.stringify({ isContinue: false }));
+    return;
+  }
 });
 
 // 合并切片放在 chunks 目录下

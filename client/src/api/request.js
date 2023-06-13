@@ -2,6 +2,7 @@ import { request } from "./config";
 
 // 上传文件
 export function uploadRequest(formData, onUploadProgress, signal) {
+  console.log(signal);
   return request({
     url: "upload",
     data: formData,
@@ -40,4 +41,14 @@ export async function verifyUpload(fileName, fileHash) {
     }),
   });
   return res.data.instantTransmission;
+}
+
+// 继续上传
+export async function getCanContinue(data) {
+  const result = await request({
+    method: "post",
+    url: "upload/can_continue",
+    data: JSON.stringify(data),
+  });
+  return result.data;
 }

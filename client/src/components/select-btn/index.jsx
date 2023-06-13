@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { createFileChunk, calculateHash, generateZip } from "../../util";
 
-function SelectFile({ updateData }) {
-  // const [ziping, setZiping] = useState(false)
+function SelectFile({ updateData, onMakingHash }) {
   const [progressValue, setProgressValue] = useState("0");
+  console.log(progressValue);
   const handleFileChange = async (e) => {
+    onMakingHash && onMakingHash(false);
     const [file] = e.target.files;
     if (!file) {
       alert("请选择文件！");
@@ -28,7 +29,7 @@ function SelectFile({ updateData }) {
     });
 
     const data = { fileHash, chunkHashs, fileName: file.name, fileChunks, hashToChunkMap };
-
+    onMakingHash && onMakingHash(true);
     updateData && updateData(data);
   };
   return (
