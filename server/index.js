@@ -143,7 +143,7 @@ server.on("request", async (req, res) => {
      */
 
     // 判断在 target_chunk 目录中是否已存在目标文件
-    if (isExistFile(CHUNK_DIR, `${fileHash}${getExtension(fileName)}`)) {
+    if (isExistFile(CHUNK_DIR, `${fileHash}${extractExt(fileName)}`)) {
       res.end(JSON.stringify({ isContinue: false }));
       return;
     }

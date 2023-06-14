@@ -30,7 +30,7 @@ function createFileChunk(file, size = CHUNK_SIZE) {
 }
 
 // 生成文件 hash 及切片 hash 值
-const calculateHash = (fileChunks, setProgressValue) => {
+const calculateHash = ({ fileChunks, onProgress }) => {
   return new Promise((resolve) => {
     let result = { fileHash: "", chunkHashs: [] };
     let worker = new Worker(new URL("./worker.js", import.meta.url));
@@ -38,7 +38,7 @@ const calculateHash = (fileChunks, setProgressValue) => {
     worker.postMessage({ fileChunks });
     worker.onmessage = (e) => {
       const { percentage, fileHash, chunkHash } = e.data;
-      setProgressValue && setProgressValue(percentage);
+      onProgress?.(percentage);
       if (fileHash) {
         result.fileHash = fileHash;
         resolve(result);
@@ -49,10 +49,19 @@ const calculateHash = (fileChunks, setProgressValue) => {
   });
 };
 
-const uploadChunks = async ({ fileName, fileHash, chunkHashs, hashToChunkMap, onUploadProgress, controllerRef }) => {
+const uploadChunks = async ({
+  fileName,
+  fileHash,
+  chunkHashs,
+  hashToChunkMap,
+  onUploadProgress,
+  onUploadQuickProcess,
+  controllerRef,
+}) => {
   // 判断是否妙传 -- 这里判断的是上传文件名和 hash 值，而非单个分片文件
   const isInstantTransmission = await verifyUpload(fileName, fileHash);
   if (isInstantTransmission) {
+    onUploadQuickProcess?.();
     alert("skip upload: file upload success");
     return;
   }
@@ -69,14 +78,14 @@ const uploadChunks = async ({ fileName, fileHash, chunkHashs, hashToChunkMap, on
     .map(({ formData }) => {
       return new Promise(async (resolve, reject) => {
         try {
-          await uploadRequest(formData, onUploadProgress, controllerRef.current.signal);
+          await uploadRequest(formData, controllerRef.current.signal);
         } catch (error) {
-          console.log("uploadRequst function fail:", error);
+          console.log("uploadRequst fail:", error);
           controllerRef.current = new AbortController();
           reject();
           return;
         }
-
+        onUploadProgress?.();
         resolve();
       });
     });

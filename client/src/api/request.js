@@ -1,21 +1,19 @@
-import { request } from "./config";
+import { axiosInstance } from "./config";
 
 // 上传文件
-export function uploadRequest(formData, onUploadProgress, signal) {
-  console.log(signal);
-  return request({
+export function uploadRequest(formData, signal) {
+  return axiosInstance({
+    method: "post",
     url: "upload",
     data: formData,
-    onProgress: (e) => {
-      onUploadProgress?.(parseInt(String((e.loaded / e.total) * 100)));
-    },
     signal,
   });
 }
 
 // 通知服务端合并分片文件
 export const mergeRequest = async (fileName, fileHash, CHUNK_SIZE) => {
-  await request({
+  await axiosInstance({
+    method: "post",
     url: "upload/merge",
     headers: {
       "content-type": "application/json",
@@ -30,8 +28,9 @@ export const mergeRequest = async (fileName, fileHash, CHUNK_SIZE) => {
 
 // 验证是否需要上传文件（文件秒传）
 export async function verifyUpload(fileName, fileHash) {
-  const res = await request({
+  const res = await axiosInstance({
     url: "upload/verify",
+    method: "post",
     headers: {
       "content-type": "application/json",
     },
@@ -45,7 +44,7 @@ export async function verifyUpload(fileName, fileHash) {
 
 // 继续上传
 export async function getCanContinue(data) {
-  const result = await request({
+  const result = await axiosInstance({
     method: "post",
     url: "upload/can_continue",
     data: JSON.stringify(data),

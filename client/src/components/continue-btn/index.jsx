@@ -16,9 +16,10 @@ const ContinueBtn = (props) => {
     // 过滤掉已经上传的chunk
     const restHashs =
       isContinue === "noChunk" ? chunkHashs : chunkHashs.filter((chunkHash) => !uploadedHashs.includes(chunkHash));
-    setProgressValue(uploadedHashs.length);
+    isContinue === "partChunk" && setProgressValue(uploadedHashs.length);
 
     await uploadChunks({
+      fileName,
       hashToChunkMap,
       chunkHashs: restHashs,
       fileHash,
