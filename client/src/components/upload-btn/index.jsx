@@ -1,4 +1,5 @@
 import React from "react";
+import { getCanContinue } from "../../api/request";
 import { uploadChunks } from "../../util";
 
 function UploadBtn({ controllerRef, setProgressValue, dataRef }) {
@@ -6,6 +7,12 @@ function UploadBtn({ controllerRef, setProgressValue, dataRef }) {
   const handleUpload = async () => {
     const { fileName, fileHash, chunkHashs, hashToChunkMap } = dataRef.current;
     if (hashToChunkMap.size === 0) return alert("请选择要上传的文件");
+
+    const { isContinue } = await getCanContinue({ fileName, fileHash, chunkHashs });
+    if (!isContinue) {
+      alert("目标文件已上传完毕，请勿重复上传");
+      return;
+    }
 
     await uploadChunks({
       fileName,

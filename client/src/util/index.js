@@ -59,7 +59,7 @@ const uploadChunks = async ({
   controllerRef,
 }) => {
   // 判断是否妙传 -- 这里判断的是上传文件名和 hash 值，而非单个分片文件
-  const isInstantTransmission = await verifyUpload(fileName, fileHash);
+  const { isInstantTransmission } = await verifyUpload(fileName, fileHash);
   if (isInstantTransmission) {
     onUploadQuickProcess?.();
     alert("skip upload: file upload success");
@@ -80,6 +80,7 @@ const uploadChunks = async ({
         try {
           await uploadRequest(formData, controllerRef.current.signal);
         } catch (error) {
+          //!!! 这里有一个不理解的地方是，点击暂停后 promise 报一个错误，这里已经捕获到了，在外层Promise 那里为什么还是报错导致页面报错
           console.log("uploadRequst fail:", error);
           controllerRef.current = new AbortController();
           reject();
@@ -89,11 +90,16 @@ const uploadChunks = async ({
         resolve();
       });
     });
+  //!!! 点击暂停，取消请求时，Promise.all 返回 reject 导致报错，这里优化一下
+  const chunkRequestStatusList = await Promise.allSettled(requestList);
 
-  await Promise.all(requestList);
-
-  // 前端发送额外的合并请求，服务端接受到请求时合并切片
-  await mergeRequest(fileName, fileHash, CHUNK_SIZE);
+  // *** 判断切片是否上传完毕
+  const isFinish = chunkRequestStatusList.every((item) => item.status === "fulfilled");
+  if (isFinish) {
+    // 前端发送额外的合并请求，服务端接受到请求时合并切片
+    const merageResult = await mergeRequest(fileName, fileHash, CHUNK_SIZE);
+    merageResult?.message && alert(merageResult?.message);
+  }
 };
 
 export { createFileChunk, calculateHash, uploadChunks, generateZip };

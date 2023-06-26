@@ -12,7 +12,7 @@ export function uploadRequest(formData, signal) {
 
 // 通知服务端合并分片文件
 export const mergeRequest = async (fileName, fileHash, CHUNK_SIZE) => {
-  await axiosInstance({
+  const res = await axiosInstance({
     method: "post",
     url: "upload/merge",
     headers: {
@@ -24,6 +24,8 @@ export const mergeRequest = async (fileName, fileHash, CHUNK_SIZE) => {
       chunk_size: CHUNK_SIZE,
     }),
   });
+
+  return res.data;
 };
 
 // 验证是否需要上传文件（文件秒传）
@@ -39,7 +41,7 @@ export async function verifyUpload(fileName, fileHash) {
       fileHash,
     }),
   });
-  return res.data.instantTransmission;
+  return res.data;
 }
 
 // 继续上传

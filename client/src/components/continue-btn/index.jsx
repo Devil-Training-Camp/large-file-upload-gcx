@@ -9,7 +9,7 @@ const ContinueBtn = (props) => {
 
     const { isContinue, uploadedHashs } = await getCanContinue({ fileName, fileHash, chunkHashs });
     if (!isContinue) {
-      // alert("目标文件已上传完毕，请勿重复上传");
+      alert("目标文件已上传完毕，请勿重复上传");
       return;
     }
 
@@ -24,7 +24,7 @@ const ContinueBtn = (props) => {
       chunkHashs: restHashs,
       fileHash,
       controllerRef,
-      onOneChunkUploaded: () => setProgressValue((value) => value + 1),
+      onUploadProgress: () => setProgressValue((value) => value + 1),
       onQuickUploaded: () => {
         setProgressValue(chunkHashs.length);
       },
