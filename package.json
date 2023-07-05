@@ -1,0 +1,42 @@
+{
+  "name": "large-file-upload-gcx",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "concurrently \"pnpm -C ./packages/client start\" \"pnpm -C ./packages/server start\"",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint --ext .js,.ts,.jsx,.tsx --fix --quiet ./packages"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@babel/core": "^7.22.1",
+    "@babel/eslint-parser": "^7.21.8",
+    "@babel/preset-env": "^7.22.4",
+    "babel-eslint": "^10.1.0",
+    "concurrently": "^8.2.0",
+    "eslint": "^8.42.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-standard": "^5.0.0",
+    "eslint-plugin-vue": "^9.14.1",
+    "lint-staged": "^13.2.2"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^17.6.6",
+    "@commitlint/config-conventional": "^17.6.6",
+    "@release-it/conventional-changelog": "^5.1.1",
+    "@typescript-eslint/eslint-plugin": "^5.61.0",
+    "@typescript-eslint/parser": "^5.0.0",
+    "commitlint": "^17.6.6",
+    "eslint-plugin-n": "^15.0.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-promise": "^6.0.0",
+    "husky": "^8.0.3",
+    "prettier": "^2.8.8",
+    "release-it": "^15.11.0",
+    "typescript": "*"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true,
+    "node": true,
+    "jest": true
+  },
+  "extends": ["eslint:recommended"],
+  "parserOptions": {
+    "parser": "@babel/eslint-parser",
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "plugins": ["prettier"],
+  "rules": {}
+  // "ignorePatterns": ["node_modules/", "dist/", "!.*", "packages/"],
+}

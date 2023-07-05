@@ -1,2 +1,3 @@
-/target
-/target_chunk
+node_modules
+/packages/target
+/packages/target_chunk
